@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Random;
 import org.hibernate.*;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.hql.internal.ast.QuerySyntaxException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -23,26 +24,11 @@ import static org.junit.Assert.*;
 public class DbConnectionJUnitTest {
     private SessionFactory sessionFctry;
     
-    
-    @BeforeClass
-    public static void setUpClass() {
-        
-    }
-    
-    @AfterClass
-    public static void tearDownClass() {
-    }
-    
     @Before
     public void setUp() {
         sessionFctry = new Configuration().configure().buildSessionFactory();
     }
-    
-    @After
-    public void tearDown() {
-    }
 
-    
     /* These test are made on Student class */
     @Test 
     public void saveStudentToExistingTableTest() {
@@ -59,12 +45,43 @@ public class DbConnectionJUnitTest {
             tx.commit();
         } catch (Exception e) {
             if( tx != null ) tx.rollback();
+            System.out.println(e);
             e.printStackTrace();
         } finally {
             
             session.close();
         }
         
+    }
+    
+    @Test(expected=MappingException.class)
+    public void TestSaveException01() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+
+        tx = session.beginTransaction();
+
+        String badinput = new String("bad input");
+        session.save(badinput);
+
+        tx.commit();
+
+        session.close();
+    }
+    
+    @Test(expected=IllegalArgumentException.class)
+    public void TestSaveException02() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+
+        tx = session.beginTransaction();
+
+        String badinput = null;
+        session.save(badinput);
+
+        tx.commit();
+
+        session.close();
     }
     
     /* These test are made on Student class */
@@ -89,6 +106,45 @@ public class DbConnectionJUnitTest {
         
     }
     
+    @Test(expected=QuerySyntaxException.class)
+    public void TestReadException01() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+
+        tx = session.beginTransaction();
+
+        List students = session.createQuery("FROM nonexistingtable").list();
+
+        tx.commit();
+        session.close();
+    }
+    
+    @Test(expected=IllegalArgumentException.class)
+    public void TestReadException02() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+
+        tx = session.beginTransaction();
+
+        List students = session.createQuery("FROMasdasd Students").list();
+
+        tx.commit();
+        session.close();
+    }
+    
+    @Test(expected=IllegalArgumentException.class)
+    public void TestReadException03() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+
+        tx = session.beginTransaction();
+
+        List students = session.createQuery("23").list();
+
+        tx.commit();
+        session.close();
+    }
+    
     @Test
     public void updateStudentInDB() {
         Session session = sessionFctry.openSession();
@@ -99,7 +155,7 @@ public class DbConnectionJUnitTest {
             tx = session.beginTransaction();
             
             
-            Student pierwszy = (Student) session.get(Student.class, 1);
+            Student pierwszy = (Student) session.get(Student.class, 2);
             
             pierwszy.setAdress(randomAdress);
             
@@ -107,6 +163,7 @@ public class DbConnectionJUnitTest {
             
             tx.commit();
         } catch (Exception e) {
+        System.out.println(e);
             if( tx != null ) tx.rollback();
             e.printStackTrace();
         } finally {
@@ -122,19 +179,88 @@ public class DbConnectionJUnitTest {
         try{
             tx = session.beginTransaction();
             
-            Student pierwszy = (Student) session.get(Student.class, 1);
+            Student pierwszy = (Student) session.get(Student.class, 2);
             
             adresPierwszeoPoAktualizacji = pierwszy.getAdress();
             
             tx.commit();
         } catch (Exception e) {
+        System.out.println(e);
             if( tx != null ) tx.rollback();
             e.printStackTrace();
         } finally {
             
             session.close();
         }
+        System.out.println(randomAdress);
+        assertEquals(randomAdress, adresPierwszeoPoAktualizacji);
+    }
+    
+    @Test(expected=IllegalArgumentException.class)
+    public void TestupdateException01() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+        String randomAdress = "Wałbrszyska 34 m " + ((new Random()).nextInt(100) + 1);
         
+        tx = session.beginTransaction();
+
+
+        Student pierwszy = (Student) session.get(Student.class, 2);
+
+        pierwszy.setAdress(randomAdress);
+
+        session.update(null);
+
+        tx.commit();
+        session.close();
+        
+        //Nowa sesja by sprawdzić czy adres danego studenta został zaktualizowany
+        session = sessionFctry.openSession();
+        tx = null;
+        String adresPierwszeoPoAktualizacji = null;
+        
+        tx = session.beginTransaction();
+
+        pierwszy = (Student) session.get(Student.class, 2);
+
+        adresPierwszeoPoAktualizacji = pierwszy.getAdress();
+
+        tx.commit();
+        session.close();
+        System.out.println(randomAdress);
+        assertEquals(randomAdress, adresPierwszeoPoAktualizacji);
+    }
+    
+    @Test(expected=StaleStateException.class)
+    public void TestupdateException02() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+        String randomAdress = "Wałbrszyska 34 m " + ((new Random()).nextInt(100) + 1);
+        
+        tx = session.beginTransaction();
+
+
+        Student pierwszy = new Student("Andrzej", "Wajda", "Mietczyńska 34 00-242 Krk");
+
+        session.update(pierwszy);
+
+        tx.commit();
+        session.close();
+        
+        //Nowa sesja by sprawdzić czy adres danego studenta został zaktualizowany
+        session = sessionFctry.openSession();
+        tx = null;
+        String adresPierwszeoPoAktualizacji = null;
+        
+        tx = session.beginTransaction();
+
+        pierwszy = (Student) session.get(Student.class, 2);
+
+        adresPierwszeoPoAktualizacji = pierwszy.getAdress();
+
+        tx.commit();
+        session.close();
+        System.out.println(randomAdress);
         assertEquals(randomAdress, adresPierwszeoPoAktualizacji);
     }
     
@@ -182,7 +308,102 @@ public class DbConnectionJUnitTest {
         session = sessionFctry.openSession();
         tx = session.beginTransaction();
         
-        Student poszukiwany = (Student) session.get(Student.class, idTemporaryStudent); //to powinno wyrzucić wyjątek
+        Student poszukiwany = (Student) session.get(Student.class, idTemporaryStudent); //to powinno wyrzucić null
+        
+        assertNull(poszukiwany);
+        
+        tx.commit();
+        session.close();
+        
+    }
+    
+    @Test(expected=IllegalArgumentException.class)
+    public void TestDeleteException01() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+        Integer idTemporaryStudent = null;
+       
+        /***********************/
+        /*dodaj studenta do db*/
+        /**********************/
+        tx = session.beginTransaction();
+            
+        Student temporaryStudent = new Student("Karol", "Marzyciel", "Malinowa 23"); 
+        idTemporaryStudent = (Integer) session.save(temporaryStudent);
+            
+        tx.commit();
+        session.close();
+
+        
+        /****************************/
+        /*usuń nowododanego studenta*/
+        /****************************/
+        session = sessionFctry.openSession();
+        tx = session.beginTransaction();
+        
+        Student usuwany = (Student) session.get(Student.class, idTemporaryStudent);
+        session.delete(null);
+
+        tx.commit();
+
+        session.close();
+       
+        
+        
+        /******************************/
+        /*spróbuj pobrać tego studenta*/
+        /******************************/
+        session = sessionFctry.openSession();
+        tx = session.beginTransaction();
+        
+        Student poszukiwany = (Student) session.get(Student.class, idTemporaryStudent); //to powinno wyrzucić null
+        
+        assertNull(poszukiwany);
+        
+        tx.commit();
+        session.close();
+        
+    }
+    @Test(expected=MappingException.class)
+    public void TestDeleteException02() {
+        Session session = sessionFctry.openSession();
+        Transaction tx = null;
+        Integer idTemporaryStudent = null;
+       
+        /***********************/
+        /*dodaj studenta do db*/
+        /**********************/
+        tx = session.beginTransaction();
+            
+        Student temporaryStudent = new Student("Karol", "Marzyciel", "Malinowa 23"); 
+        idTemporaryStudent = (Integer) session.save(temporaryStudent);
+            
+        tx.commit();
+        session.close();
+
+        
+        /****************************/
+        /*usuń nowododanego studenta*/
+        /****************************/
+        session = sessionFctry.openSession();
+        tx = session.beginTransaction();
+        
+        String usuwany = new String("asd");
+        session.delete(usuwany);
+
+        tx.commit();
+
+        session.close();
+       
+        
+        
+        /******************************/
+        /*spróbuj pobrać tego studenta*/
+        /******************************/
+        session = sessionFctry.openSession();
+        tx = session.beginTransaction();
+        
+        Student poszukiwany = (Student) session.get(Student.class, idTemporaryStudent); //to powinno wyrzucić null
         
         assertNull(poszukiwany);
         
