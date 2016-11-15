@@ -47,5 +47,6 @@ Contributor(s):
     <property name="hibernate.connection.username">app</property>
     <property name="hibernate.connection.password">app</property>
     <mapping resource="student.hbm.xml"/>
+    <mapping resource="car.hbm.xml"/>
   </session-factory>
 </hibernate-configuration>

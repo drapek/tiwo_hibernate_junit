@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+ "-//Hibernate/Hibernate Mapping DTD//EN"
+ "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd"> 
+
+<hibernate-mapping>
+   <class name="Car" table="CAR">
+      <meta attribute="class-description">
+         This class contains the avaiable cars. 
+      </meta>
+      <id name="id" type="int" column="id">
+         <generator class="native"/>
+      </id>
+      <map name="additions" cascade="all" sort="CarAdditionsSorting">
+         <key column="car_id"/>
+         <index column="addition_type" type="string"/>
+         <one-to-many class="CarAddition"/>
+      </map>
+      <property name="brand_name" column="brand_name" type="string"/>
+      <property name="model_name" column="model_name" type="string"/>
+      <property name="production_year" column="production_year" type="int"/>
+      <property name="prize" column="prize" type="float"/>
+      <property name="engine_type" column="engine_type" type="string"/>
+   </class>
+
+   <class name="CarAddition" table="CAR_ADDITION">
+      <meta attribute="class-description">
+         This class contains the avaiable addtions to the cars. 
+      </meta>
+      <id name="id" type="int" column="id">
+         <generator class="native"/>
+      </id>
+      <property name="addition_name" column="addition_name" type="string"/>
+      
+   </class>
+
+</hibernate-mapping>
